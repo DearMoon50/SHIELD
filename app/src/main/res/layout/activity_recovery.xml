@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center"
+    android:background="#1E293B">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🛡️ SHIELD RECOVERY"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:layout_marginBottom="32dp" />
+
+    <TextView
+        android:id="@+id/tvRecoveryStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Checking system status..."
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvSnapshotInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Last snapshot: Unknown"
+        android:textSize="14sp"
+        android:textColor="#94A3B8"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <Button
+        android:id="@+id/btnCreateSnapshot"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="CREATE SNAPSHOT"
+        android:textSize="16sp"
+        android:backgroundTint="#3B82F6"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnStartRestore"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="RESTORE FILES"
+        android:textSize="16sp"
+        android:backgroundTint="#10B981"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnCancelRestore"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="CANCEL"
+        android:textSize="16sp"
+        android:backgroundTint="#64748B"
+        android:textColor="#FFFFFF" />
+
+</LinearLayout>

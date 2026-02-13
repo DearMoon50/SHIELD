@@ -63,6 +63,33 @@
             </intent-filter>
         </service>
 
+        <!-- File Access Activity -->
+        <activity
+            android:name=".FileAccessActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:label="File Monitoring" />
+
+        <!-- Recovery Activity (Snapshot) -->
+        <activity
+            android:name=".snapshot.RecoveryActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:label="Snapshot Recovery" />
+
+        <!-- Emergency Recovery Activity (Locker Shield) -->
+        <activity
+            android:name=".lockerguard.EmergencyRecoveryActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:label="Emergency Recovery" />
+
+        <!-- Locker Shield Service -->
+        <service
+            android:name=".lockerguard.LockerShieldService"
+            android:enabled="true"
+            android:exported="false" />
+
     </application>
 
 </manifest>

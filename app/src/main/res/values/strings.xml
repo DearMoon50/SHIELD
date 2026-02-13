@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SHIELD</string>
+    <string name="locker_shield_description">SHIELD Accessibility Service for enhanced protection</string>
 </resources>

@@ -45,6 +45,22 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btnRequestPermissions).setOnClickListener(v -> requestNecessaryPermissions());
         findViewById(R.id.btnViewLogs).setOnClickListener(v -> viewLogs());
 
+        // Advanced Security Feature Buttons
+        findViewById(R.id.btnFileMonitoring).setOnClickListener(v -> {
+            Intent intent = new Intent(this, FileAccessActivity.class);
+            startActivity(intent);
+        });
+
+        findViewById(R.id.btnSnapshotRecovery).setOnClickListener(v -> {
+            Intent intent = new Intent(this, com.dearmoon.shield.snapshot.RecoveryActivity.class);
+            startActivity(intent);
+        });
+
+        findViewById(R.id.btnLockerGuard).setOnClickListener(v -> {
+            Intent intent = new Intent(this, com.dearmoon.shield.lockerguard.EmergencyRecoveryActivity.class);
+            startActivity(intent);
+        });
+
         updateStatusDisplay();
     }
 

@@ -38,4 +38,12 @@ public class FileSystemEvent extends TelemetryEvent {
             return new JSONObject();
         }
     }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public String getOperation() {
+        return operation;
+    }
 }

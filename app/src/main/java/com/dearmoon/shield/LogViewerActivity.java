@@ -1,5 +1,6 @@
 package com.dearmoon.shield;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -40,6 +41,14 @@ public class LogViewerActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_log_viewer);
+
+        // Force status bar to black
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(0xFF000000);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(0);
+        }
 
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbarLogs);
         setSupportActionBar(toolbar);
@@ -286,7 +295,8 @@ public class LogViewerActivity extends AppCompatActivity {
     }
 
     private String extractFilePath(String details) {
-        if (details == null) return null;
+        if (details == null)
+            return null;
         String[] lines = details.split("\\n");
         for (String line : lines) {
             if (line.startsWith("Full Path:") || line.startsWith("File:")) {
@@ -297,13 +307,14 @@ public class LogViewerActivity extends AppCompatActivity {
     }
 
     private String extractDetectionInfo(String details) {
-        if (details == null) return "";
+        if (details == null)
+            return "";
         StringBuilder info = new StringBuilder();
         String[] lines = details.split("\\n");
         for (String line : lines) {
-            if (line.startsWith("Entropy:") || line.startsWith("KL-Divergence:") || 
-                line.startsWith("SPRT State:") || line.startsWith("Confidence Score:") ||
-                line.startsWith("Risk Level:")) {
+            if (line.startsWith("Entropy:") || line.startsWith("KL-Divergence:") ||
+                    line.startsWith("SPRT State:") || line.startsWith("Confidence Score:") ||
+                    line.startsWith("Risk Level:")) {
                 info.append(line).append("\n");
             }
         }

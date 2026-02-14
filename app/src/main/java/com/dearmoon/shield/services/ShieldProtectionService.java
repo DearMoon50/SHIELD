@@ -14,7 +14,6 @@ import androidx.core.app.NotificationCompat;
 import com.dearmoon.shield.MainActivity;
 import com.dearmoon.shield.R;
 import com.dearmoon.shield.collectors.MediaStoreCollector;
-import com.dearmoon.shield.collectors.MediaStoreCollector;
 import com.dearmoon.shield.collectors.FileSystemCollector;
 import com.dearmoon.shield.collectors.HoneyfileCollector;
 import com.dearmoon.shield.data.TelemetryStorage;

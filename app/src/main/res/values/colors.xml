@@ -3,15 +3,23 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- Premium Palette -->
-    <color name="primary">#6366F1</color>
-    <color name="primary_variant">#4F46E5</color>
-    <color name="secondary">#06B6D4</color>
-    <color name="secondary_variant">#0891B2</color>
+    <!-- Premium Hidden Gems Palette -->
+    <color name="primary">#8B5CF6</color> <!-- Violet 500 -->
+    <color name="primary_variant">#7C3AED</color> <!-- Violet 600 -->
+    <color name="secondary">#D946EF</color> <!-- Fuchsia 500 -->
+    <color name="secondary_variant">#C026D3</color> <!-- Fuchsia 600 -->
     
-    <color name="bg_main">#0F172A</color>
-    <color name="bg_surface">#1E293B</color>
-    <color name="bg_surface_elevated">#334155</color>
+    <color name="bg_main">#000000</color>
+    
+    <!-- Requested Static Palette -->
+    <color name="deep_purple">#8C72C1</color>
+    <color name="muted_violet">#5A4A8F</color>
+    <color name="near_black">#0D0D0D</color>
+    <color name="pure_black">#000000</color>
+    
+    <!-- Backward Compatibility Aliases -->
+    <color name="bg_surface">@color/near_black</color>
+    <color name="bg_surface_elevated">@color/muted_violet</color>
     
     <color name="text_primary">#F8FAFC</color>
     <color name="text_secondary">#94A3B8</color>
@@ -25,4 +33,5 @@
     <!-- Glassmorphism helpers -->
     <color name="glass_white_10">#1AFFFFFF</color>
     <color name="glass_white_20">#33FFFFFF</color>
+    <color name="glass_purple_20">#338B5CF6</color>
 </resources>

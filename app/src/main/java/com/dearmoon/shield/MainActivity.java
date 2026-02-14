@@ -10,7 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
-import android.util.Log;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,50 +18,99 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.dearmoon.shield.services.NetworkGuardService;
 import com.dearmoon.shield.services.ShieldProtectionService;
+import com.dearmoon.shield.ui.GlitchTextView;
+import com.dearmoon.shield.ui.DataLeakTextView;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int PERMISSION_REQUEST_CODE = 100;
 
-    private TextView tvProtectionStatus;
-    private TextView tvPermissionStatus;
+    private GlitchTextView tvProtectionStatus;
+    private Button btnModeA;
+    private Button btnModeB;
+    private Button btnVpn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Force status bar to black on all devices
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(0xFF000000); // Pure black
+        }
+
+        // Make status bar icons light (white) for visibility on black background
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(0); // Clear light status bar flag
+        }
+
         initializeViews();
     }
 
     private void initializeViews() {
         tvProtectionStatus = findViewById(R.id.tvProtectionStatus);
-        tvPermissionStatus = findViewById(R.id.tvPermissionStatus);
+        btnModeA = findViewById(R.id.btnModeA);
+        btnModeB = findViewById(R.id.btnModeB);
+        btnVpn = findViewById(R.id.btnVpn);
 
-        findViewById(R.id.btnStartProtection).setOnClickListener(v -> startShieldService());
-        findViewById(R.id.btnStopProtection).setOnClickListener(v -> stopShieldService());
-        findViewById(R.id.btnStartVpn).setOnClickListener(v -> startVpnService());
-        findViewById(R.id.btnStopVpn).setOnClickListener(v -> stopVpnService());
-        findViewById(R.id.btnRequestPermissions).setOnClickListener(v -> requestNecessaryPermissions());
-        findViewById(R.id.btnViewLogs).setOnClickListener(v -> viewLogs());
-
-        // Advanced Security Feature Buttons
-        findViewById(R.id.btnFileMonitoring).setOnClickListener(v -> {
-            Intent intent = new Intent(this, FileAccessActivity.class);
-            startActivity(intent);
+        // Mode A: Empty/Inactive
+        btnModeA.setOnClickListener(v -> {
+            Toast.makeText(this, "Mode A: Standby", Toast.LENGTH_SHORT).show();
+            // Implement any specific Mode A logic here if needed
         });
 
-        findViewById(R.id.btnSnapshotRecovery).setOnClickListener(v -> {
-            Intent intent = new Intent(this, com.dearmoon.shield.snapshot.RecoveryActivity.class);
-            startActivity(intent);
-        });
+        // Mode B: Toggle Shield Service
+        btnModeB.setOnClickListener(v -> toggleProtection());
 
-        findViewById(R.id.btnLockerGuard).setOnClickListener(v -> {
+        // VPN: Toggle Network Guard
+        btnVpn.setOnClickListener(v -> toggleVpn());
+
+        // Bottom Navigation
+        findViewById(R.id.btnNavLocker).setOnClickListener(v -> {
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             startActivity(intent);
         });
 
+        findViewById(R.id.btnNavLogs).setOnClickListener(v -> {
+            Intent intent = new Intent(this, LogViewerActivity.class);
+            startActivity(intent);
+        });
+
+        findViewById(R.id.btnNavHome).setOnClickListener(v -> {
+            // Already on Home
+            Toast.makeText(this, "Home", Toast.LENGTH_SHORT).show();
+        });
+
+        findViewById(R.id.btnNavFile).setOnClickListener(v -> {
+            Intent intent = new Intent(this, FileAccessActivity.class);
+            startActivity(intent);
+        });
+
+        findViewById(R.id.btnNavSnapshot).setOnClickListener(v -> {
+            Intent intent = new Intent(this, com.dearmoon.shield.snapshot.RecoveryActivity.class);
+            startActivity(intent);
+        });
+
         updateStatusDisplay();
+    }
+
+    private void toggleProtection() {
+        boolean isServiceRunning = isServiceRunning(ShieldProtectionService.class);
+        if (isServiceRunning) {
+            stopShieldService();
+        } else {
+            startShieldService();
+        }
+    }
+
+    private void toggleVpn() {
+        boolean isVpnRunning = isServiceRunning(NetworkGuardService.class);
+        if (isVpnRunning) {
+            stopVpnService();
+        } else {
+            startVpnService();
+        }
     }
 
     private void startVpnService() {
@@ -77,8 +126,31 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(this, NetworkGuardService.class);
         intent.setAction(NetworkGuardService.ACTION_STOP);
         startService(intent);
+
+        // Use a delayed check or manual update to ensure UI reflects 'OFF' state
+        // immediately
         Toast.makeText(this, "Network Guard Disabled", Toast.LENGTH_SHORT).show();
-        updateStatusDisplay();
+
+        // Force update UI to OFF state manually rather than relying on
+        // race-condition-prone isServiceRunning immediately
+        // However, updateStatusDisplay() checks real service state.
+        // Let's create a specialized update method or just wait a moment.
+        // For now, let's rely on the fact that if we just signaled STOP, we should
+        // visually indicate STOP.
+        // We will pass a flag or just execute updateStatusDisplay() normally but let's
+        // see.
+        // Actually, the issue is isServiceRunning() sees the service as still alive.
+        // We will modify updateStatusDisplay to accept an override or just wait.
+        // Simpler: assume it takes a moment.
+
+        btnVpn.setBackgroundResource(R.drawable.bg_glass_button_inactive);
+        btnVpn.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+        btnVpn.setText("Network Guard");
+
+        // We also update general status but skip the VPN check part for this specific
+        // call?
+        // Let's just update the rest.
+        updateStatusDisplay(false);
     }
 
     @Override
@@ -114,38 +186,61 @@ public class MainActivity extends AppCompatActivity {
         updateStatusDisplay();
     }
 
-    private void viewLogs() {
-        Intent intent = new Intent(this, LogViewerActivity.class);
-        startActivity(intent);
+    private void updateStatusDisplay() {
+        updateStatusDisplay(true);
     }
 
-    private void updateStatusDisplay() {
+    private void updateStatusDisplay(boolean checkVpn) {
         boolean isServiceRunning = isServiceRunning(ShieldProtectionService.class);
-        boolean isVpnRunning = isServiceRunning(NetworkGuardService.class);
+        boolean isVpnRunning = checkVpn && isServiceRunning(NetworkGuardService.class);
         boolean isLockerGuardEnabled = isAccessibilityServiceEnabled();
 
-        if (isServiceRunning || isVpnRunning) {
+        if (isServiceRunning) {
+            // Stop glitch effect
+            tvProtectionStatus.stopGlitchEffect();
+
+            // Trigger scan beam animation, then show cursor
             tvProtectionStatus.setText("System Protected");
             tvProtectionStatus.setTextColor(0xFF10B981); // Emerald 500
+
+            tvProtectionStatus.startScanBeam(() -> {
+                // After scan completes, start cursor blink
+                tvProtectionStatus.startCursorBlink();
+            });
+
+            // Mode B Active State
+            btnModeB.setBackgroundResource(R.drawable.bg_glass_button_active);
+            btnModeB.setText("Active");
+            btnModeB.setTextColor(0xFFFFFFFF);
         } else {
-            tvProtectionStatus.setText("System At Risk");
-            tvProtectionStatus.setTextColor(0xFFEF4444); // Red 500
+            // Stop cursor and scan effects
+            tvProtectionStatus.stopCursorBlink();
+
+            tvProtectionStatus.setText("Protection Inactive");
+            tvProtectionStatus.setTextColor(0xFF94A3B8); // Muted gray
+
+            // Start glitch effect for inactive state
+            tvProtectionStatus.startGlitchEffect();
+
+            // Mode B Inactive State
+            btnModeB.setBackgroundResource(R.drawable.bg_glass_button_inactive);
+            btnModeB.setText("Mode B");
+            btnModeB.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
         }
 
-        StringBuilder permStatus = new StringBuilder("Status: ");
-        if (hasRequiredPermissions()) {
-            permStatus.append("Fully Authorized");
-        } else {
-            permStatus.append("Authorization Required");
+        if (checkVpn) {
+            if (isVpnRunning) {
+                btnVpn.setBackgroundResource(R.drawable.bg_glass_button_active);
+                btnVpn.setTextColor(0xFFFFFFFF);
+                btnVpn.setText("Network Guard: ON");
+            } else {
+                btnVpn.setBackgroundResource(R.drawable.bg_glass_button_inactive);
+                btnVpn.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+                btnVpn.setText("Network Guard");
+            }
         }
 
-        if (isVpnRunning) {
-            permStatus.append(" | Network Monitor Active");
-        }
-        
-        permStatus.append(" | Locker Guard: ").append(isLockerGuardEnabled ? "ON" : "OFF");
-
-        tvPermissionStatus.setText(permStatus.toString());
+        // Permission status removed - no longer displayed
     }
 
     private boolean isAccessibilityServiceEnabled() {
@@ -153,7 +248,8 @@ public class MainActivity extends AppCompatActivity {
         try {
             int enabled = Settings.Secure.getInt(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED);
             if (enabled == 1) {
-                String services = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+                String services = Settings.Secure.getString(getContentResolver(),
+                        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
                 return services != null && services.contains(service);
             }
         } catch (Exception e) {

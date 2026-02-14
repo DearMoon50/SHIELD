@@ -1,5 +1,6 @@
 package com.dearmoon.shield;
 
+import android.os.Build; // Added import for Build
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -35,6 +36,14 @@ public class FileAccessActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_access);
 
+        // Force status bar to black
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().setStatusBarColor(0xFF000000);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(0);
+        }
+
         com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbarFileAccess);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -69,14 +78,14 @@ public class FileAccessActivity extends AppCompatActivity {
         File telemetryFile = new File(getFilesDir(), "modeb_telemetry.json");
         Log.i(TAG, "Loading from: " + telemetryFile.getAbsolutePath());
         Log.i(TAG, "File exists: " + telemetryFile.exists());
-        
+
         if (!telemetryFile.exists()) {
             Log.w(TAG, "No telemetry file found");
             updateEventCount();
             logAdapter.notifyDataSetChanged();
             return;
         }
-        
+
         Log.i(TAG, "File size: " + telemetryFile.length() + " bytes");
 
         try (BufferedReader reader = new BufferedReader(
@@ -86,13 +95,14 @@ public class FileAccessActivity extends AppCompatActivity {
             int lineCount = 0;
             while ((line = reader.readLine()) != null) {
                 lineCount++;
-                if (line.trim().isEmpty()) continue;
+                if (line.trim().isEmpty())
+                    continue;
 
                 try {
                     JSONObject json = new JSONObject(line);
                     String eventType = json.optString("eventType", "");
                     Log.d(TAG, "Line " + lineCount + ": eventType=" + eventType);
-                    
+
                     if ("FILE_SYSTEM".equals(eventType)) {
                         LogViewerActivity.LogEntry entry = parseFileEvent(json);
                         if (entry != null) {
@@ -148,7 +158,8 @@ public class FileAccessActivity extends AppCompatActivity {
     }
 
     private String getFileName(String fullPath) {
-        if (fullPath == null || fullPath.isEmpty()) return "Unknown";
+        if (fullPath == null || fullPath.isEmpty())
+            return "Unknown";
         int lastSlash = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'));
         return lastSlash >= 0 ? fullPath.substring(lastSlash + 1) : fullPath;
     }

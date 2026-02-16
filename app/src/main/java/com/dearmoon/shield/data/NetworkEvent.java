@@ -25,12 +25,12 @@ public class NetworkEvent extends TelemetryEvent {
     public JSONObject toJSON() {
         try {
             JSONObject json = getBaseJSON();
-            json.put("destIp", destIp);
-            json.put("destPort", destPort);
+            json.put("destinationIp", destIp);
+            json.put("destinationPort", destPort);
             json.put("protocol", protocol);
-            json.put("sentBytes", sentBytes);
-            json.put("receivedBytes", receivedBytes);
-            json.put("uid", uid);
+            json.put("bytesSent", sentBytes);
+            json.put("bytesReceived", receivedBytes);
+            json.put("appUid", uid);
             return json;
         } catch (JSONException e) {
             return new JSONObject();

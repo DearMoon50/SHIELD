@@ -22,13 +22,14 @@ public class SPRTDetector {
     }
 
     public synchronized SPRTState addObservation(double fileModificationRate) {
-        if (currentState != SPRTState.CONTINUE) {
-            return currentState;
-        }
-
+        // Don't reset on decision - keep accumulating evidence
         // Calculate log-likelihood ratio increment
-        // Using Poisson distribution for event rates
-        double logLR = fileModificationRate * Math.log(RANSOMWARE_RATE / NORMAL_RATE) 
+        // Using Poisson distribution: log(P(k|λ₁)/P(k|λ₀)) = k·log(λ₁/λ₀) + (λ₀ - λ₁)
+        // where k = number of events observed in time window
+        // fileModificationRate is events/sec, so multiply by 1 sec to get count
+        int eventCount = (int) Math.round(fileModificationRate);
+        
+        double logLR = eventCount * Math.log(RANSOMWARE_RATE / NORMAL_RATE) 
                      + (NORMAL_RATE - RANSOMWARE_RATE);
         
         logLikelihoodRatio += logLR;
@@ -39,6 +40,8 @@ public class SPRTDetector {
             currentState = SPRTState.ACCEPT_H1;
         } else if (logLikelihoodRatio <= Math.log(A)) {
             currentState = SPRTState.ACCEPT_H0;
+        } else {
+            currentState = SPRTState.CONTINUE;
         }
 
         return currentState;

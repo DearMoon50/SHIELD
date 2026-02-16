@@ -95,6 +95,42 @@
             android:textSize="18sp"
             android:textColor="@color/text_primary"
             android:background="@drawable/bg_glass_button_inactive"
+            app:backgroundTint="@null"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Network Blocking Toggle -->
+        <Button
+            android:id="@+id/btnBlockingToggle"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:text="Blocking: OFF"
+            android:textSize="18sp"
+            android:textColor="@color/text_primary"
+            android:background="@drawable/bg_glass_button_inactive"
+            app:backgroundTint="@null"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Test Suite Button -->
+        <Button
+            android:id="@+id/btnTestSuite"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="🧪 Test Suite"
+            android:textSize="16sp"
+            android:textColor="#FF6F00"
+            android:background="@drawable/bg_glass_button_inactive"
+            app:backgroundTint="@null"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Clear Honeyfiles Button -->
+        <Button
+            android:id="@+id/btnClearHoneyfiles"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="🗑️ Clear Honeyfiles"
+            android:textSize="14sp"
+            android:textColor="#EF4444"
+            android:background="@drawable/bg_glass_button_inactive"
             app:backgroundTint="@null" />
 
     </LinearLayout>

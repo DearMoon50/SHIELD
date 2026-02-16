@@ -6,6 +6,7 @@ import androidx.annotation.Nullable;
 import com.dearmoon.shield.data.FileSystemEvent;
 import com.dearmoon.shield.data.TelemetryStorage;
 import com.dearmoon.shield.detection.UnifiedDetectionEngine;
+import com.dearmoon.shield.snapshot.SnapshotManager;
 import java.io.File;
 
 public class FileSystemCollector extends FileObserver {
@@ -13,6 +14,7 @@ public class FileSystemCollector extends FileObserver {
     private final TelemetryStorage storage;
     private final String monitoredPath;
     private UnifiedDetectionEngine detectionEngine;
+    private SnapshotManager snapshotManager;
 
     private final java.util.Map<String, Long> lastEventMap = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long DEBOUNCE_DELAY_MS = 500;
@@ -26,6 +28,10 @@ public class FileSystemCollector extends FileObserver {
 
     public void setDetectionEngine(UnifiedDetectionEngine engine) {
         this.detectionEngine = engine;
+    }
+
+    public void setSnapshotManager(SnapshotManager manager) {
+        this.snapshotManager = manager;
     }
 
     @Override
@@ -77,16 +83,23 @@ public class FileSystemCollector extends FileObserver {
             }
         }
 
-        // 2. Logic for Detection Engine (System Integrity: "Dont break the system")
-        // The detection engine expects raw operations like "MODIFY", "CLOSE_WRITE",
-        // "CREATE".
-        // We pass a separate event with the raw operation to ensure it functions as
-        // designed.
-        if (detectionEngine != null && (rawOperation.equals("MODIFY") || rawOperation.equals("CLOSE_WRITE")
-                || rawOperation.equals("CREATE"))) {
-            // Log.d(TAG, "Forwarding to detection engine: " + fullPath);
-            FileSystemEvent rawEvent = new FileSystemEvent(fullPath, rawOperation, size, size);
-            detectionEngine.processFileEvent(rawEvent);
+        // 2. Logic for Detection Engine - forward CLOSE_WRITE as MODIFY for analysis
+        if (detectionEngine != null && rawOperation.equals("CLOSE_WRITE")) {
+            FileSystemEvent detectionEvent = new FileSystemEvent(fullPath, "MODIFY", size, size);
+            detectionEngine.processFileEvent(detectionEvent);
+            Log.d(TAG, "Forwarded to detection engine: MODIFY - " + fullPath);
+        }
+
+        // 3. Logic for Snapshot Manager - track all file changes
+        if (snapshotManager != null) {
+            if (rawOperation.equals("CLOSE_WRITE") || rawOperation.equals("DELETE")) {
+                snapshotManager.trackFileChange(fullPath);
+                Log.d(TAG, "Tracked file change in snapshot: " + rawOperation + " - " + fullPath);
+            } else if (rawOperation.equals("CREATE") && file.exists() && file.length() > 0) {
+                // Track newly created files after they're written
+                snapshotManager.trackFileChange(fullPath);
+                Log.d(TAG, "Tracked new file in snapshot: " + fullPath);
+            }
         }
     }
 

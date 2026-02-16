@@ -5,18 +5,19 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import com.dearmoon.shield.data.FileSystemEvent;
+import com.dearmoon.shield.data.EventDatabase;
 import java.io.File;
-import java.io.FileWriter;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class UnifiedDetectionEngine {
     private static final String TAG = "UnifiedDetectionEngine";
-    private static final String DETECTION_LOG = "detection_results.json";
 
     private final Context context;
+    private final EventDatabase database;
     private final EntropyAnalyzer entropyAnalyzer;
     private final KLDivergenceCalculator klCalculator;
     private final SPRTDetector sprtDetector;
+    private final BehaviorCorrelationEngine correlationEngine;
 
     private final HandlerThread detectionThread;
     private final Handler detectionHandler;
@@ -28,9 +29,11 @@ public class UnifiedDetectionEngine {
 
     public UnifiedDetectionEngine(Context context) {
         this.context = context;
+        this.database = EventDatabase.getInstance(context);
         this.entropyAnalyzer = new EntropyAnalyzer();
         this.klCalculator = new KLDivergenceCalculator();
         this.sprtDetector = new SPRTDetector();
+        this.correlationEngine = new BehaviorCorrelationEngine(context);
 
         detectionThread = new HandlerThread("DetectionThread");
         detectionThread.start();
@@ -89,24 +92,40 @@ public class UnifiedDetectionEngine {
 
             // Calculate composite confidence score
             int confidenceScore = calculateConfidenceScore(entropy, klDivergence, sprtState);
+            
+            // PSEUDO-KERNEL: Add behavior correlation
+            CorrelationResult correlation = correlationEngine.correlateFileEvent(
+                filePath, event.getTimestamp(), android.os.Process.myUid());
+            int behaviorScore = correlation.getBehaviorScore();
+            int totalScore = Math.min(confidenceScore + behaviorScore, 130); // Max 130 (100 file + 30 behavior)
 
-            Log.i(TAG, "Detection: entropy=" + entropy + ", kl=" + klDivergence + ", sprt=" + sprtState + ", score="
-                    + confidenceScore);
+            Log.i(TAG, "Detection: entropy=" + entropy + ", kl=" + klDivergence + ", sprt=" + sprtState + 
+                    ", fileScore=" + confidenceScore + ", behaviorScore=" + behaviorScore + ", total=" + totalScore);
 
             DetectionResult result = new DetectionResult(
-                    entropy, klDivergence, sprtState.name(), confidenceScore, filePath);
+                    entropy, klDivergence, sprtState.name(), totalScore, filePath);
 
             logDetectionResult(result);
+            
+            // Store correlation result
+            try {
+                database.insertCorrelationResult(correlation.toJSON());
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to store correlation result", e);
+            }
 
             if (result.isHighRisk()) {
                 Log.w(TAG, "HIGH RISK DETECTED: " + result.toJSON().toString());
+                triggerNetworkBlock();
+                showHighRiskAlert(filePath, confidenceScore);
             }
 
-            // Reset SPRT if decision reached
-            if (sprtState != SPRTDetector.SPRTState.CONTINUE) {
-                Log.w(TAG, "SPRT Decision: " + sprtState + " | Confidence: " + confidenceScore);
+            // Reset SPRT only on ACCEPT_H0 (normal behavior confirmed)
+            if (sprtState == SPRTDetector.SPRTState.ACCEPT_H0) {
+                Log.i(TAG, "SPRT Decision: Normal behavior confirmed, resetting");
                 sprtDetector.reset();
             }
+            // Keep SPRT state on ACCEPT_H1 to maintain high alert
         } catch (Exception e) {
             Log.e(TAG, "Error analyzing file event", e);
         }
@@ -165,13 +184,8 @@ public class UnifiedDetectionEngine {
 
     private void logDetectionResult(DetectionResult result) {
         try {
-            File logFile = new File(context.getFilesDir(), DETECTION_LOG);
-            FileWriter writer = new FileWriter(logFile, true);
-            String jsonStr = result.toJSON().toString();
-            writer.write(jsonStr + "\n");
-            writer.close();
-
-            Log.i(TAG, "Detection logged: " + jsonStr);
+            database.insertDetectionResult(result.toJSON());
+            Log.i(TAG, "Detection logged to SQLite: " + result.toJSON().toString());
 
             if (result.isHighRisk()) {
                 Log.w(TAG, "HIGH RISK DETECTED: " + result.toJSON().toString());
@@ -181,11 +195,28 @@ public class UnifiedDetectionEngine {
         }
     }
 
+    @Deprecated
     public File getDetectionLogFile() {
-        return new File(context.getFilesDir(), DETECTION_LOG);
+        // Legacy method for compatibility
+        return new File(context.getFilesDir(), "detection_results.json");
     }
 
     public void shutdown() {
         detectionThread.quitSafely();
+    }
+    
+    private void triggerNetworkBlock() {
+        android.content.Intent intent = new android.content.Intent("com.dearmoon.shield.BLOCK_NETWORK");
+        context.sendBroadcast(intent);
+        Log.e(TAG, "Network block triggered - broadcast sent");
+    }
+    
+    private void showHighRiskAlert(String filePath, int score) {
+        android.content.Intent intent = new android.content.Intent("com.dearmoon.shield.HIGH_RISK_ALERT");
+        intent.putExtra("file_path", filePath);
+        intent.putExtra("confidence_score", score);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.sendBroadcast(intent);
+        Log.e(TAG, "High-risk alert broadcast sent");
     }
 }

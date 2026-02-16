@@ -99,44 +99,35 @@ public class LogViewerActivity extends AppCompatActivity {
 
         loadTelemetryEvents();
         loadDetectionResults();
-        mergeFileEventsWithDetections();
 
         Collections.sort(allEvents, (a, b) -> Long.compare(b.timestamp, a.timestamp));
 
-        Log.i(TAG, "Loaded " + allEvents.size() + " total events");
+        Log.i(TAG, "Loaded " + allEvents.size() + " total events from SQLite");
     }
 
     private void loadTelemetryEvents() {
-        File telemetryFile = new File(getFilesDir(), "modeb_telemetry.json");
-        if (!telemetryFile.exists()) {
-            Log.w(TAG, "Telemetry file not found: " + telemetryFile.getAbsolutePath());
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(telemetryFile)))) {
-
-            String line;
-            int count = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty())
-                    continue;
-
+        try {
+            com.dearmoon.shield.data.EventDatabase database = 
+                com.dearmoon.shield.data.EventDatabase.getInstance(this);
+            
+            Log.d(TAG, "Loading telemetry events from database...");
+            List<JSONObject> events = database.getAllEvents("ALL", 1000);
+            Log.i(TAG, "Database returned " + events.size() + " telemetry events");
+            
+            for (JSONObject json : events) {
                 try {
-                    JSONObject json = new JSONObject(line);
                     LogEntry entry = parseTelemetryEvent(json);
                     if (entry != null) {
                         allEvents.add(entry);
-                        count++;
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "Error parsing telemetry line: " + line, e);
+                    Log.e(TAG, "Error parsing event: " + json.toString(), e);
                 }
             }
-
-            Log.i(TAG, "Loaded " + count + " telemetry events from " + telemetryFile.getAbsolutePath());
+            
+            Log.i(TAG, "Successfully parsed " + allEvents.size() + " telemetry events");
         } catch (Exception e) {
-            Log.e(TAG, "Error reading telemetry file", e);
+            Log.e(TAG, "Error reading telemetry from SQLite", e);
             Toast.makeText(this, "Error loading telemetry: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
         }
@@ -210,36 +201,26 @@ public class LogViewerActivity extends AppCompatActivity {
     }
 
     private void loadDetectionResults() {
-        File detectionFile = new File(getFilesDir(), "detection_results.json");
-        if (!detectionFile.exists()) {
-            Log.w(TAG, "Detection file not found");
-            return;
-        }
-
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(detectionFile)))) {
-
-            String line;
-            int count = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty())
-                    continue;
-
+        try {
+            com.dearmoon.shield.data.EventDatabase database = 
+                com.dearmoon.shield.data.EventDatabase.getInstance(this);
+            
+            List<JSONObject> results = database.getAllDetectionResults(1000);
+            
+            for (JSONObject json : results) {
                 try {
-                    JSONObject json = new JSONObject(line);
                     LogEntry entry = parseDetectionResult(json);
                     if (entry != null) {
                         allEvents.add(entry);
-                        count++;
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "Error parsing detection line: " + line, e);
+                    Log.e(TAG, "Error parsing detection result: " + json.toString(), e);
                 }
             }
-
-            Log.i(TAG, "Loaded " + count + " detection results");
+            
+            Log.i(TAG, "Loaded " + results.size() + " detection results from SQLite");
         } catch (Exception e) {
-            Log.e(TAG, "Error reading detection file", e);
+            Log.e(TAG, "Error reading detection results from SQLite", e);
             Toast.makeText(this, "Error loading detections: " + e.getMessage(),
                     Toast.LENGTH_SHORT).show();
         }
@@ -289,37 +270,6 @@ public class LogViewerActivity extends AppCompatActivity {
         }
     }
 
-    private void mergeFileEventsWithDetections() {
-        // Don't merge - keep them separate
-        // File events stay clean, detection events stay separate
-    }
-
-    private String extractFilePath(String details) {
-        if (details == null)
-            return null;
-        String[] lines = details.split("\\n");
-        for (String line : lines) {
-            if (line.startsWith("Full Path:") || line.startsWith("File:")) {
-                return line.substring(line.indexOf(":") + 1).trim();
-            }
-        }
-        return null;
-    }
-
-    private String extractDetectionInfo(String details) {
-        if (details == null)
-            return "";
-        StringBuilder info = new StringBuilder();
-        String[] lines = details.split("\\n");
-        for (String line : lines) {
-            if (line.startsWith("Entropy:") || line.startsWith("KL-Divergence:") ||
-                    line.startsWith("SPRT State:") || line.startsWith("Confidence Score:") ||
-                    line.startsWith("Risk Level:")) {
-                info.append(line).append("\n");
-            }
-        }
-        return info.toString().trim();
-    }
 
     private void applyFilter() {
         filteredEvents.clear();
@@ -343,8 +293,14 @@ public class LogViewerActivity extends AppCompatActivity {
     }
 
     private void clearAllLogs() {
+        com.dearmoon.shield.data.EventDatabase database = 
+            com.dearmoon.shield.data.EventDatabase.getInstance(this);
+        database.clearAllEvents();
+        
+        // Also delete legacy JSON files if they exist
         new File(getFilesDir(), "modeb_telemetry.json").delete();
         new File(getFilesDir(), "detection_results.json").delete();
+        
         allEvents.clear();
         filteredEvents.clear();
         logAdapter.notifyDataSetChanged();

@@ -60,17 +60,20 @@ SHIELD is an Android ransomware detection application that implements "Mode B" f
   - Monitors multiple directories (Documents, Downloads, Pictures, DCIM)
   - Creates honeyfiles in monitored locations
 
-- **NetworkGuardService** - VPN-based network monitor
+- **NetworkGuardService** - VPN-based network monitor & blocker
   - Captures network packets via VPN interface
   - Extracts metadata (IP, port, protocol, size)
   - Logs network events to telemetry storage
-  - Pass-through mode (doesn't block traffic)
+  - **Blocks suspicious traffic** (malicious IPs, ports, Tor nodes)
+  - **Emergency mode**: Blocks ALL traffic when ransomware detected
+  - User-controlled blocking toggle (default: OFF)
 
 #### 5. User Interface
 - **MainActivity** - Control center
   - Start/Stop protection
   - Request runtime permissions
   - Start VPN service
+  - **Toggle network blocking** (ON/OFF)
   - View detection logs
   - Real-time status display
 
@@ -114,6 +117,7 @@ SHIELD is an Android ransomware detection application that implements "Mode B" f
 - `WRITE_EXTERNAL_STORAGE` - Monitor file modifications
 - `MANAGE_EXTERNAL_STORAGE` - Full file system access (Android 11+)
 - `POST_NOTIFICATIONS` - Show foreground service notification (Android 13+)
+- `RECEIVE_BOOT_COMPLETED` - Auto-start service after device reboot
 
 ### Special Permissions
 - `BIND_VPN_SERVICE` - Network monitoring via VPN
@@ -154,6 +158,8 @@ SHIELD is an Android ransomware detection application that implements "Mode B" f
 1. Tap "Start Network Monitoring (VPN)"
 2. Accept VPN permission dialog
 3. Network metadata collection begins
+4. **Toggle "Blocking: ON"** to enable traffic blocking (default: OFF)
+5. System monitors and optionally blocks suspicious connections
 
 ### 4. View Logs
 1. Tap "View Detection Logs"
@@ -181,13 +187,22 @@ SHIELD is an Android ransomware detection application that implements "Mode B" f
 - VPN-based packet capture
 - IPv4 only (currently)
 - Extracts: destination IP, port, protocol, packet size
-- Pass-through mode (no traffic blocking)
+- **Blocking modes:**
+  - **OFF (default)**: Monitor only, no blocking
+  - **ON (user-enabled)**: Block suspicious IPs/ports
+  - **Emergency (auto-triggered)**: Block ALL traffic when ransomware detected
+- **Blocked targets:**
+  - Malicious ports: 4444, 5555, 6666, 7777
+  - Tor exit nodes: 185.220.101.x, 45.61.185.x, etc.
+  - Private networks: 10.x, 192.168.x, 172.16-31.x
+  - Localhost/link-local: 127.x, 169.254.x
 
 ### Detection Processing
 - Background thread processing
 - 1-second time window for modification rate
 - Asynchronous event handling
 - Thread-safe storage
+- **Auto-triggers network blocking** when confidence ≥70
 
 ## Build Instructions
 
@@ -213,7 +228,8 @@ app/src/main/java/com/dearmoon/shield/
 ├── LogAdapter.java                      # RecyclerView adapter for logs
 ├── collectors/
 │   ├── FileSystemCollector.java        # File system monitoring
-│   └── HoneyfileCollector.java         # Honeyfile management
+│   ├── HoneyfileCollector.java         # Honeyfile management
+│   └── MediaStoreCollector.java        # MediaStore monitoring (disabled)
 ├── data/
 │   ├── TelemetryEvent.java             # Base event class
 │   ├── FileSystemEvent.java            # File system events
@@ -227,9 +243,26 @@ app/src/main/java/com/dearmoon/shield/
 │   ├── KLDivergenceCalculator.java     # KL-divergence
 │   ├── SPRTDetector.java               # Statistical testing
 │   └── DetectionResult.java            # Detection outcomes
-└── services/
-    ├── ShieldProtectionService.java    # Main orchestrator
-    └── NetworkGuardService.java        # VPN network monitor
+├── services/
+│   ├── ShieldProtectionService.java    # Main orchestrator
+│   └── NetworkGuardService.java        # VPN network monitor & blocker
+├── receivers/
+│   ├── BootReceiver.java               # Auto-start on boot
+│   ├── ServiceRestartReceiver.java     # Auto-restart on crash
+│   └── NetworkBlockReceiver.java       # Emergency blocking trigger
+├── security/
+│   └── SecurityUtils.java              # RASP & anti-tampering
+├── snapshot/
+│   ├── SnapshotManager.java            # File backup system
+│   ├── RestoreEngine.java              # Recovery engine
+│   ├── SnapshotDatabase.java           # Snapshot metadata
+│   ├── FileMetadata.java               # File tracking
+│   └── RecoveryActivity.java           # Recovery UI
+└── lockerguard/
+    ├── LockerShieldService.java        # Accessibility monitor
+    ├── RiskEvaluator.java              # Threat scoring
+    ├── LockerShieldEvent.java          # Locker events
+    └── EmergencyRecoveryActivity.java  # Emergency UI
 ```
 
 ## Completion Status
@@ -242,7 +275,7 @@ app/src/main/java/com/dearmoon/shield/
 5. KL-divergence calculator
 6. SPRT detector (statistical testing)
 7. Unified detection engine
-8. Network guard VPN service
+8. **Network guard VPN service with blocking**
 9. Shield protection orchestrator service
 10. MainActivity with full UI
 11. AndroidManifest with all permissions
@@ -250,6 +283,9 @@ app/src/main/java/com/dearmoon/shield/
 13. **LogViewerActivity** - Comprehensive event log viewer
 14. **LogAdapter** - RecyclerView adapter for log entries
 15. Log viewer layouts (activity and item)
+16. **RASP & Anti-Tampering** - SecurityUtils with runtime protection
+17. **Auto-Restart Mechanism** - Boot receiver & service restart
+18. **Emergency Network Blocking** - Auto-triggered on ransomware detection
 
 ### 🎯 Ready for Testing
 The project is now complete and ready for:
@@ -263,5 +299,11 @@ The project is now complete and ready for:
 - The project successfully builds with `./gradlew assembleDebug`
 - All Mode B components have been migrated from the original `modeb` project
 - The architecture follows the original design specifications
-- **Bug Fixed:** Telemetry storage now uses plain JSON (appending to GZIP was failing).
-- **Update:** Log viewer now correctly filters file system events to show only modifications and deletions as requested.
+- **Bug Fixed:** Telemetry storage now uses plain JSON (appending to GZIP was failing)
+- **Update:** Log viewer now correctly filters file system events to show only modifications and deletions
+- **Update:** MediaStoreCollector disabled to prevent duplicate telemetry entries
+- **Security:** RASP checks for debugger, emulator, root, hooks, and signature tampering
+- **Reliability:** Auto-restart on boot and service crash
+- **Network Protection:** VPN blocks ransomware C2 communication (user-controlled + auto-emergency mode)
+#   s h i e l d - d s c i -  
+ 

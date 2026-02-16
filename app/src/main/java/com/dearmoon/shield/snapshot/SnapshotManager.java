@@ -44,6 +44,8 @@ public class SnapshotManager {
         });
     }
 
+    // TODO: Integration needed - call this method from FileSystemCollector or MediaStoreCollector
+    // when file changes are detected to enable real-time snapshot tracking
     public void trackFileChange(String filePath) {
         executor.execute(() -> {
             File file = new File(filePath);

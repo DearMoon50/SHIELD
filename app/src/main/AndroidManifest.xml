@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -98,6 +99,43 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/locker_shield_config" />
         </service>
+
+        <!-- Boot Receiver -->
+        <receiver
+            android:name=".receivers.BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Service Restart Receiver -->
+        <receiver
+            android:name=".receivers.ServiceRestartReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dearmoon.shield.RESTART_SERVICE" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Network Block Receiver -->
+        <receiver
+            android:name=".receivers.NetworkBlockReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.dearmoon.shield.BLOCK_NETWORK" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Test Activity -->
+        <activity
+            android:name=".testing.TestActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"
+            android:label="Ransomware Test Suite" />
 
     </application>
 

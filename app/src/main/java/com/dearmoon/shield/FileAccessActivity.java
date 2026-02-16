@@ -75,48 +75,27 @@ public class FileAccessActivity extends AppCompatActivity {
         allEvents.clear();
         filteredEvents.clear();
 
-        File telemetryFile = new File(getFilesDir(), "modeb_telemetry.json");
-        Log.i(TAG, "Loading from: " + telemetryFile.getAbsolutePath());
-        Log.i(TAG, "File exists: " + telemetryFile.exists());
+        try {
+            com.dearmoon.shield.data.EventDatabase database = 
+                com.dearmoon.shield.data.EventDatabase.getInstance(this);
+            
+            List<org.json.JSONObject> events = database.getAllEvents("FILE_SYSTEM", 1000);
+            Log.i(TAG, "Loading " + events.size() + " file system events from SQLite");
 
-        if (!telemetryFile.exists()) {
-            Log.w(TAG, "No telemetry file found");
-            updateEventCount();
-            logAdapter.notifyDataSetChanged();
-            return;
-        }
-
-        Log.i(TAG, "File size: " + telemetryFile.length() + " bytes");
-
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(telemetryFile)))) {
-
-            String line;
-            int lineCount = 0;
-            while ((line = reader.readLine()) != null) {
-                lineCount++;
-                if (line.trim().isEmpty())
-                    continue;
-
+            for (org.json.JSONObject json : events) {
                 try {
-                    JSONObject json = new JSONObject(line);
-                    String eventType = json.optString("eventType", "");
-                    Log.d(TAG, "Line " + lineCount + ": eventType=" + eventType);
-
-                    if ("FILE_SYSTEM".equals(eventType)) {
-                        LogViewerActivity.LogEntry entry = parseFileEvent(json);
-                        if (entry != null) {
-                            allEvents.add(entry);
-                            Log.d(TAG, "Added event: " + entry.title);
-                        }
+                    LogViewerActivity.LogEntry entry = parseFileEvent(json);
+                    if (entry != null) {
+                        allEvents.add(entry);
+                        Log.d(TAG, "Added event: " + entry.title);
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "Error parsing line " + lineCount + ": " + line, e);
+                    Log.e(TAG, "Error parsing event: " + json.toString(), e);
                 }
             }
             Log.i(TAG, "Total events loaded: " + allEvents.size());
         } catch (Exception e) {
-            Log.e(TAG, "Error reading file", e);
+            Log.e(TAG, "Error reading from SQLite", e);
         }
 
         Collections.sort(allEvents, (a, b) -> Long.compare(b.timestamp, a.timestamp));
@@ -125,7 +104,7 @@ public class FileAccessActivity extends AppCompatActivity {
         updateEventCount();
     }
 
-    private LogViewerActivity.LogEntry parseFileEvent(JSONObject json) throws Exception {
+    private LogViewerActivity.LogEntry parseFileEvent(org.json.JSONObject json) throws Exception {
         LogViewerActivity.LogEntry entry = new LogViewerActivity.LogEntry();
         entry.timestamp = json.getLong("timestamp");
         entry.type = "FILE_SYSTEM";
@@ -170,6 +149,11 @@ public class FileAccessActivity extends AppCompatActivity {
     }
 
     private void clearAllLogs() {
+        com.dearmoon.shield.data.EventDatabase database = 
+            com.dearmoon.shield.data.EventDatabase.getInstance(this);
+        database.clearAllEvents();
+        
+        // Also delete legacy JSON file if it exists
         File telemetryFile = new File(getFilesDir(), "modeb_telemetry.json");
         telemetryFile.delete();
 

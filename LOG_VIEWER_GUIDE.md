@@ -47,6 +47,7 @@ Shows:
 - Destination IP and port
 - Bytes sent and received
 - Application UID
+- **Blocked status** (if blocking enabled)
 
 #### Detection Results
 Shows:
@@ -187,21 +188,23 @@ The log viewer reads from two files:
    - Network events during suspicious file operations
    - Connections to unknown IPs
    - High data transfer volumes
+   - **Blocked connections** (check for C2 attempts)
 
 ### Response Actions
 
 If you see suspicious activity:
 
-1. **Stop Protection Service** (to preserve evidence)
+1. **Enable Network Blocking** ("Blocking: ON" button)
 2. **Review the logs** carefully
 3. **Note the package name/UID** of suspicious apps
-4. **Export logs** for analysis:
+4. **Check blocked connections** in network events
+5. **Export logs** for analysis:
    ```bash
-   adb pull /data/data/com.dearmoon.shield/files/modeb_telemetry.json.gz
+   adb pull /data/data/com.dearmoon.shield/files/modeb_telemetry.json
    adb pull /data/data/com.dearmoon.shield/files/detection_results.json
    ```
-5. **Uninstall suspicious apps**
-6. **Restart protection**
+6. **Uninstall suspicious apps**
+7. **Restart protection**
 
 ## Troubleshooting
 
@@ -237,7 +240,7 @@ Potential improvements:
 All logs are stored in the app's private directory:
 ```
 /data/data/com.dearmoon.shield/files/
-├── modeb_telemetry.json.gz    # All telemetry events
+├── modeb_telemetry.json        # All telemetry events (plain JSON)
 └── detection_results.json      # Detection analysis
 ```
 
@@ -246,9 +249,8 @@ Access via ADB:
 # View detection results
 adb shell cat /data/data/com.dearmoon.shield/files/detection_results.json
 
-# Pull telemetry (compressed)
-adb pull /data/data/com.dearmoon.shield/files/modeb_telemetry.json.gz
-gunzip modeb_telemetry.json.gz
+# Pull telemetry
+adb pull /data/data/com.dearmoon.shield/files/modeb_telemetry.json
 cat modeb_telemetry.json
 ```
 

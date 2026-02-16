@@ -18,6 +18,8 @@ import com.dearmoon.shield.collectors.FileSystemCollector;
 import com.dearmoon.shield.collectors.HoneyfileCollector;
 import com.dearmoon.shield.data.TelemetryStorage;
 import com.dearmoon.shield.detection.UnifiedDetectionEngine;
+import com.dearmoon.shield.security.SecurityUtils;
+import com.dearmoon.shield.snapshot.SnapshotManager;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +33,7 @@ public class ShieldProtectionService extends Service {
     private UnifiedDetectionEngine detectionEngine;
     private HoneyfileCollector honeyfileCollector;
     private MediaStoreCollector mediaStoreCollector;
+    private SnapshotManager snapshotManager;
     private List<FileSystemCollector> fileSystemCollectors = new ArrayList<>();
 
     @Override
@@ -41,10 +44,9 @@ public class ShieldProtectionService extends Service {
         // Initialize storage and detection engine
         storage = new TelemetryStorage(this);
         detectionEngine = new UnifiedDetectionEngine(this);
+        snapshotManager = new SnapshotManager(this);
 
-        // Initialize collectors
-        mediaStoreCollector = new MediaStoreCollector(this, storage, detectionEngine);
-        mediaStoreCollector.startWatching();
+        // Initialize collectors (MediaStoreCollector disabled to prevent duplicates)
         initializeCollectors();
 
         // Start as foreground service
@@ -53,9 +55,12 @@ public class ShieldProtectionService extends Service {
 
     private void initializeCollectors() {
         // Initialize honeyfile collector
-        honeyfileCollector = new HoneyfileCollector(storage);
+        honeyfileCollector = new HoneyfileCollector(storage, this);
         String[] honeyfileDirs = getMonitoredDirectories();
         honeyfileCollector.createHoneyfiles(this, honeyfileDirs);
+
+        // Create baseline snapshot
+        snapshotManager.createBaselineSnapshot(honeyfileDirs);
 
         // Initialize file system collectors
         for (String dir : honeyfileDirs) {
@@ -63,6 +68,7 @@ public class ShieldProtectionService extends Service {
             if (directory.exists() && directory.isDirectory()) {
                 FileSystemCollector collector = new FileSystemCollector(dir, storage);
                 collector.setDetectionEngine(detectionEngine);
+                collector.setSnapshotManager(snapshotManager);
                 collector.startWatching();
                 fileSystemCollectors.add(collector);
                 Log.i(TAG, "Started monitoring: " + dir);
@@ -124,6 +130,7 @@ public class ShieldProtectionService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        SecurityUtils.checkSecurity(this);
         Log.i(TAG, "ShieldProtectionService started");
         return START_STICKY;
     }
@@ -132,10 +139,10 @@ public class ShieldProtectionService extends Service {
     public void onDestroy() {
         Log.i(TAG, "ShieldProtectionService destroyed");
 
-        // Stop MediaStore collector
-        if (mediaStoreCollector != null) {
-            mediaStoreCollector.stopWatching();
-        }
+        // Stop MediaStore collector (disabled)
+        // if (mediaStoreCollector != null) {
+        //     mediaStoreCollector.stopWatching();
+        // }
 
         // Stop all file system collectors
         for (FileSystemCollector collector : fileSystemCollectors) {
@@ -143,15 +150,25 @@ public class ShieldProtectionService extends Service {
         }
         fileSystemCollectors.clear();
 
-        // Stop honeyfile collector
+        // Stop honeyfile collector and clear honeyfiles
         if (honeyfileCollector != null) {
             honeyfileCollector.stopWatching();
+            honeyfileCollector.clearAllHoneyfiles();
         }
 
         // Shutdown detection engine
         if (detectionEngine != null) {
             detectionEngine.shutdown();
         }
+
+        // Shutdown snapshot manager
+        if (snapshotManager != null) {
+            snapshotManager.shutdown();
+        }
+
+        // Trigger restart
+        Intent restartIntent = new Intent("com.dearmoon.shield.RESTART_SERVICE");
+        sendBroadcast(restartIntent);
 
         super.onDestroy();
     }
